@@ -1,0 +1,186 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  username  String   @unique
+  password  String
+  avatar    String?
+  createdAt DateTime @default(now())
+  role      String   @default("admin") // Explicit role
+}
+
+model Vendor {
+  id        Int       @id @default(autoincrement())
+  name      String
+  thumbnail String?
+  createdAt DateTime  @default(now())
+  Product   Product[]
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String
+  thumbnail String?
+  createdAt DateTime  @default(now())
+  Product   Product[]
+}
+
+model Product {
+  id                   Int                    @id @default(autoincrement())
+  name                 String
+  desc                 String?
+  price                Float
+  discountPrice        Float?
+  thumbnail            String?
+  createdAt            DateTime               @default(now())
+  lineOrder            LineOrder[]
+  vendor               Vendor                 @relation(fields: [vendorId], references: [id])
+  category             Category               @relation(fields: [categoryId], references: [id])
+  vendorId             Int
+  categoryId           Int
+  rating               Float?                 @default(0)
+  cart                 Cart[]
+  productDiscountCodes ProductDiscountCodes[]
+  Review               Review[]
+  productImage         ProductImage[]
+  productDiscount      ProductDiscount[]
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  username  String   @unique
+  password  String
+  avatar    String?
+  createdAt DateTime @default(now())
+  order     Order[]
+  cart      Cart[]
+  Review    Review[]
+  role      String   @default("customer") // Explicit role
+}
+
+model Order {
+  id         Int      @id @default(autoincrement())
+  quantity   Int
+  totalPrice Float
+  note       String?
+  createdAt  DateTime @default(now())
+
+  customer       Customer      @relation(fields: [customerId], references: [id])
+  customerId     Int
+  lineOrder      LineOrder[]
+  discountCode   DiscountCode? @relation(fields: [discountCodeId], references: [id])
+  discountCodeId Int?
+}
+
+model LineOrder {
+  id        Int      @id @default(autoincrement())
+  quantity  Int
+  price     Float
+  createdAt DateTime @default(now())
+
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+
+  order   Order @relation(fields: [orderId], references: [id])
+  orderId Int
+}
+
+model Cart {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId Int
+
+  quantity Int
+  // price    Float
+
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+}
+
+model DiscountCode {
+  id                   Int                    @id @default(autoincrement())
+  code                 String                 @unique
+  description          String?
+  minAmount            Float // Minimum cart total to apply the discount
+  discountRate         Float // Discount percentage (e.g., 0.10 for 10%)
+  isActive             Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  numberCodeApply      Int?
+  productDiscountCodes ProductDiscountCodes[]
+  Order                Order[]
+}
+
+model ProductDiscountCodes {
+  id             Int          @id @default(autoincrement())
+  product        Product      @relation(fields: [productId], references: [id])
+  discountCode   DiscountCode @relation(fields: [discountCodeId], references: [id])
+  productId      Int
+  discountCodeId Int
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  rating    Int      @default(1)
+  comment   String? // Optional review comment
+  createdAt DateTime @default(now())
+
+  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId Int
+
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+
+  @@unique([customerId, productId]) // Ensure one review per customer per product
+}
+
+model ProductImage {
+  id        Int      @id @default(autoincrement())
+  url       String
+  product   Product  @relation(fields: [productId], references: [id])
+  productId Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([url, productId], name: "product_url_unique")
+}
+
+model Discount {
+  id         Int      @id @default(autoincrement())
+  name       String
+  desc       String?
+  percentage Float // Discount percentage (e.g., 20 for 20%)
+  startDate  DateTime // Start date of the discount
+  endDate    DateTime // End date of the discount
+  active     Boolean @default(true)
+  createdAt       DateTime          @default(now())
+  productDiscount ProductDiscount[]
+}
+
+model ProductDiscount {
+  productId  Int
+  discountId Int
+  product    Product  @relation(fields: [productId], references: [id])
+  discount   Discount @relation(fields: [discountId], references: [id])
+
+  @@id([productId, discountId]) // Composite key
+}
